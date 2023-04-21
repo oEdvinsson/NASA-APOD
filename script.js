@@ -10,9 +10,12 @@ const apiKey = 'DEMO_KEY';
 const apiUrl = `https://api.nasa.gov/planetary/apod?api_key=${apiKey}&count=${count}`;
 
 let resultsArray = [];
+let favorites = {};
 
-function updateDOM() {
-    resultsArray.forEach((result) => {
+function createDOMNodes(page) {
+    const currentArray = page === 'results' ? resultsArray : Object.values(favorites);
+    console.log('Current Array', page, currentArray);
+    currentArray.forEach((result) => {
         // Card Container
         const card = document.createElement('div');
         card.classList.add('card');
@@ -32,12 +35,13 @@ function updateDOM() {
         cardBody.classList.add('card-body');
         // Card Title
         const cardTitle = document.createElement('h5');
-        cardTitle-classList.add('card-title');
+        cardTitle.classList.add('card-title');
         cardTitle.textContent = result.title;
         // Save Text
         const saveText = document.createElement('p');
         saveText.classList.add('clickable');
         saveText.textContent = 'Add To Favorites';
+        saveText.setAttribute('onclick', `saveFavorite('${result.url}')`);
         // Card Text
         const cardText = document.createElement('p');
         cardText.textContent = result.explanation; 
@@ -48,9 +52,25 @@ function updateDOM() {
         const date = document.createElement('strong');
         date.textContent = result.date;
         // Copyright
+        const copyrightResult = result.copyright === undefined ? '' : result.copyright;
         const copyright = document.createElement('span');
-        copyright
+        copyright.textContent = `${copyrightResult}`;
+        // Append
+        footer.append(date, copyright);
+        cardBody.append(cardTitle, saveText, cardText, footer);
+        link.appendChild(image);
+        card.append(link, cardBody);
+        imagesContainer.appendChild(card);
     });
+}
+
+function updateDOM(page) {
+    // Get Favorites from localStorage
+    if (localStorage.getItem('nasaFavorites')) {
+        favorites = JSON.parse(localStorage.getItem('nasaFavorites'));
+        console.log('favorites from localstorage', favorites);
+    }
+    createDOMNodes(page);
 }
 
 // Get 10 Images from NASA API
@@ -58,11 +78,27 @@ async function getNasaPictures() {
     try {
         const response = await fetch(apiUrl);
         resultsArray = await response.json();
-        console.log(resultsArray);
-        updateDOM();
+        updateDOM('favorites');
     }  catch (error) {
         // Catch Error Here
     }
+}
+
+// Add result to Favorites
+function saveFavorite(itemUrl) {
+    resultsArray.forEach((item) => {
+        if (item.url.includes(itemUrl) && !favorites[itemUrl]) {
+            favorites[itemUrl] = item;
+            console.log(JSON.stringify(favorites));
+            // Show Save Confirmation for 2 seconds
+            saveConfirmed.hidden = false;
+            setTimeout(() => {
+                saveConfirmed.hidden = true;
+            }, 2000);
+            // Set Favorites in localStorage
+            localStorage.setItem('nasaFavorites', JSON.stringify(favorites));
+        }
+    });
 }
 
 // On Load
